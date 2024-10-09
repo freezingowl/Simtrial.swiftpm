@@ -288,7 +288,7 @@ extension CGVector {
     }
 }
 
-class SquareSimulationScene: SKScene {
+class CircularSimulationScene: SKScene {
     private var ball: SKShapeNode?
     private var boundary: SKShapeNode?
     private let ballRadius: CGFloat = 10
@@ -304,14 +304,14 @@ class SquareSimulationScene: SKScene {
     
     private func createBoundary() {
         let size = min(self.size.width, self.size.height) - ballRadius * 2
-        let rect = CGRect(x: -size/2, y: -size/2, width: size, height: size)
+        let radius = size / 2
         
-        boundary = SKShapeNode(rect: rect)
+        boundary = SKShapeNode(circleOfRadius: radius)
         boundary?.position = CGPoint(x: self.size.width / 2, y: self.size.height / 2)
         boundary?.strokeColor = .black
         boundary?.lineWidth = 2
         
-        let physicsBody = SKPhysicsBody(edgeLoopFrom: rect)
+        let physicsBody = SKPhysicsBody(circleOfRadius: radius)
         physicsBody.isDynamic = false
         boundary?.physicsBody = physicsBody
         
@@ -320,7 +320,7 @@ class SquareSimulationScene: SKScene {
     
     private func createBall() {
         ball = SKShapeNode(circleOfRadius: ballRadius)
-        ball?.fillColor = .green
+        ball?.fillColor = .blue
         ball?.position = CGPoint(x: size.width / 2, y: size.height / 2)
         
         let physicsBody = SKPhysicsBody(circleOfRadius: ballRadius)
@@ -342,14 +342,13 @@ struct ContentView: View {
     @State private var currentSimulation = 0
     
     var scenes: [SKScene] {
-        let circleScene = GameScene(size: CGSize(width: 300, height: 300))
-        circleScene.scaleMode = .resizeFill
-        
-        let squareScene = SquareSimulationScene()
-        squareScene.size = CGSize(width: 300, height: 300)
+        let squareScene = GameScene(size: CGSize(width: 300, height: 300))
         squareScene.scaleMode = .resizeFill
         
-        return [circleScene, squareScene]
+        let circleScene = CircularSimulationScene(size: CGSize(width: 300, height: 300))
+        circleScene.scaleMode = .resizeFill
+        
+        return [squareScene, circleScene]
     }
     
     var body: some View {
@@ -365,7 +364,7 @@ struct ContentView: View {
             .tabViewStyle(PageTabViewStyle(indexDisplayMode: .automatic))
             .frame(height: 320)
             
-            Text(currentSimulation == 0 ? "Circle Simulation" : "Square Simulation")
+            Text(currentSimulation == 0 ? "Square Simulation" : "Circle Simulation")
                 .font(.headline)
                 .padding()
         }

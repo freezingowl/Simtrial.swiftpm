@@ -288,156 +288,86 @@ extension CGVector {
     }
 }
 
-struct ContentView: View {
-    @State private var scene: GameScene?
-    @State private var isMoving = false
-    @State private var timeLeft: TimeInterval = 30.0
-    @State private var redScore: Int = 0
-    @State private var greenScore: Int = 0
-    @State private var audioPlayer: AVAudioPlayer?
-    @State private var isGapWidening = false
-    @State private var gapWidenFactor: Double = 1.1
-    @State private var maxGapWidth: Double = 240
-    @State private var gapWideningSpeed: Double = 1.0
-    @State private var gapNarrowingSpeed: Double = 0.5
-    @State private var isGapWideningSectionExpanded = false
+class SquareSimulationScene: SKScene {
+    private var ball: SKShapeNode?
+    private var boundary: SKShapeNode?
+    private let ballRadius: CGFloat = 10
+    private let initialSpeed: CGFloat = 300
 
-    var body: some View {
-        VStack(spacing: 10) {
-            HStack {
-                Spacer()
-                HStack {
-                    Circle()
-                        .fill(Color.red)
-                        .frame(width: 20, height: 20)
-                    Text("\(redScore)")
-                        .foregroundColor(.red)
-                }
-                Spacer()
-                HStack {
-                    Circle()
-                        .fill(Color.green)
-                        .frame(width: 20, height: 20)
-                    Text("\(greenScore)")
-                        .foregroundColor(.green)
-                }
-                Spacer()
-            }
-            .padding(.top)
-
-            if let scene = scene {
-                SpriteView(scene: scene)
-                    .frame(width: 300, height: 300)
-                    .border(Color.blue, width: 2)
-            } else {
-                Color.gray.frame(width: 300, height: 300)
-            }
-
-            Text("Time Left: \(Int(timeLeft))")
-                .font(.headline)
-
-            Button(action: {
-                if scene?.isGameOver ?? false || !isMoving {
-                    scene?.startMoving()
-                    isMoving = true
-                    timeLeft = 20.0
-                } else {
-                    scene?.stopMoving()
-                    isMoving = false
-                }
-            }) {
-                Text(scene?.isGameOver ?? false ? "Restart" : (isMoving ? "Stop" : "Go"))
-                    .padding()
-                    .background(Color.blue)
-                    .foregroundColor(.white)
-                    .cornerRadius(10)
-            }
-
-            DisclosureGroup(
-                isExpanded: $isGapWideningSectionExpanded,
-                content: {
-                    VStack {
-                        Toggle("Enable Gap Widening", isOn: $isGapWidening)
-                            .onChange(of: isGapWidening) { newValue in
-                                scene?.isGapWidening = newValue
-                                scene?.updateTopWalls()
-                            }
-
-                        HStack {
-                            Text("Widen Factor:")
-                            Slider(value: $gapWidenFactor, in: 1.0...1.5, step: 0.1)
-                                .onChange(of: gapWidenFactor) { newValue in
-                                    scene?.setGapWideningFactor(CGFloat(newValue))
-                                }
-                            Text(String(format: "%.1f", gapWidenFactor))
-                        }
-
-                        HStack {
-                            Text("Max Width:")
-                            Slider(value: $maxGapWidth, in: 50...300, step: 10)
-                                .onChange(of: maxGapWidth) { newValue in
-                                    scene?.setMaxGapWidth(CGFloat(newValue))
-                                }
-                            Text(String(format: "%.0f", maxGapWidth))
-                        }
-
-                        HStack {
-                            Text("Widening Speed:")
-                            Slider(value: $gapWideningSpeed, in: 0.1...5.0, step: 0.1)
-                                .onChange(of: gapWideningSpeed) { newValue in
-                                    scene?.setGapWideningSpeed(CGFloat(newValue))
-                                }
-                            Text(String(format: "%.1f", gapWideningSpeed))
-                        }
-
-                        HStack {
-                            Text("Narrowing Speed:")
-                            Slider(value: $gapNarrowingSpeed, in: 0.1...5.0, step: 0.1)
-                                .onChange(of: gapNarrowingSpeed) { newValue in
-                                    scene?.setGapNarrowingSpeed(CGFloat(newValue))
-                                }
-                            Text(String(format: "%.1f", gapNarrowingSpeed))
-                        }
-                    }
-                    .padding(.leading)
-                },
-                label: {
-                    Text("Gap Widening Settings")
-                        .font(.headline)
-                }
-            )
-            .padding()
-            .background(Color.gray.opacity(0.1))
-            .cornerRadius(10)
-        }
-        .padding()
-        .onAppear {
-            let newScene = GameScene(size: CGSize(width: 300, height: 300))
-            newScene.scaleMode = .resizeFill
-            self.scene = newScene
-            
-            // Set up audio player
-            if let audioURL = Bundle.main.url(forResource: "Montagem Mysterious Game start 7", withExtension: "mp3") {
-                do {
-                    audioPlayer = try AVAudioPlayer(contentsOf: audioURL)
-                    audioPlayer?.prepareToPlay()
-                } catch {
-                    print("Error setting up audio player: \(error.localizedDescription)")
-                }
-            }
-        }
-        .onReceive(Timer.publish(every: 0.1, on: .main, in: .common).autoconnect()) { _ in
-            if let scene = scene {
-                timeLeft = max(0, 30.0 - scene.elapsedTime)
-                redScore = scene.redScore
-                greenScore = scene.greenScore
-                isMoving = !scene.isGameOver && scene.isMoving
-            }
-        }
+    override func didMove(to view: SKView) {
+        backgroundColor = .white
+        physicsWorld.gravity = .zero
+        
+        createBoundary()
+        createBall()
     }
     
-    // Function to play audio
-    private func playAudio() {
-        audioPlayer?.play()
+    private func createBoundary() {
+        let size = min(self.size.width, self.size.height) - ballRadius * 2
+        let rect = CGRect(x: -size/2, y: -size/2, width: size, height: size)
+        
+        boundary = SKShapeNode(rect: rect)
+        boundary?.position = CGPoint(x: self.size.width / 2, y: self.size.height / 2)
+        boundary?.strokeColor = .black
+        boundary?.lineWidth = 2
+        
+        let physicsBody = SKPhysicsBody(edgeLoopFrom: rect)
+        physicsBody.isDynamic = false
+        boundary?.physicsBody = physicsBody
+        
+        addChild(boundary!)
+    }
+    
+    private func createBall() {
+        ball = SKShapeNode(circleOfRadius: ballRadius)
+        ball?.fillColor = .green
+        ball?.position = CGPoint(x: size.width / 2, y: size.height / 2)
+        
+        let physicsBody = SKPhysicsBody(circleOfRadius: ballRadius)
+        physicsBody.affectedByGravity = false
+        physicsBody.linearDamping = 0
+        physicsBody.restitution = 1
+        physicsBody.friction = 0
+        ball?.physicsBody = physicsBody
+        
+        addChild(ball!)
+        
+        // Set initial velocity
+        let angle = CGFloat.random(in: 0...2 * .pi)
+        ball?.physicsBody?.velocity = CGVector(dx: cos(angle) * initialSpeed, dy: sin(angle) * initialSpeed)
+    }
+}
+
+struct ContentView: View {
+    @State private var currentSimulation = 0
+    
+    var scenes: [SKScene] {
+        let circleScene = GameScene(size: CGSize(width: 300, height: 300))
+        circleScene.scaleMode = .resizeFill
+        
+        let squareScene = SquareSimulationScene()
+        squareScene.size = CGSize(width: 300, height: 300)
+        squareScene.scaleMode = .resizeFill
+        
+        return [circleScene, squareScene]
+    }
+    
+    var body: some View {
+        VStack {
+            TabView(selection: $currentSimulation) {
+                ForEach(0..<scenes.count, id: \.self) { index in
+                    SpriteView(scene: scenes[index])
+                        .frame(width: 300, height: 300)
+                        .border(Color.blue, width: 2)
+                        .tag(index)
+                }
+            }
+            .tabViewStyle(PageTabViewStyle(indexDisplayMode: .automatic))
+            .frame(height: 320)
+            
+            Text(currentSimulation == 0 ? "Circle Simulation" : "Square Simulation")
+                .font(.headline)
+                .padding()
+        }
     }
 }

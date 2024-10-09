@@ -340,13 +340,13 @@ struct ContentView: View {
                 if scene?.isGameOver ?? false || !isMoving {
                     scene?.startMoving()
                     isMoving = true
-                    timeLeft = 30.0
+                    timeLeft = 20.0
                 } else {
                     scene?.stopMoving()
                     isMoving = false
                 }
             }) {
-                Text(scene?.isGameOver ?? false ? "Restart" : (isMoving ? "Stop" : "Start"))
+                Text(scene?.isGameOver ?? false ? "Restart" : (isMoving ? "Stop" : "Go"))
                     .padding()
                     .background(Color.blue)
                     .foregroundColor(.white)
